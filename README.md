@@ -62,7 +62,7 @@ SearchableSelect(container, config)
 | `name` | `string` | `''` | Name of the hidden input that holds the selected value, used when the form is submitted. |
 | `placeholder` | `string` | `'Select…'` | Placeholder of the visible input. |
 | `noMatchText` | `string` | `'No matches'` | Text shown when the search finds no regular options. Shown as plain text. |
-| `textInput` | `HTMLElement` | `null` | The text input to reveal when an option with `showTextInput: true` is selected. |
+| `textInput` | `HTMLElement` or `HTMLElement[]` | `null` | What to reveal when an option with `showTextInput: true` is selected. A single text input, a wrapper element (label + input + help text), or an array of elements. See [example 4](#4-reveal-a-label-input-and-help-text-together). |
 | `value` | `string` | `null` | `value` of the option to select initially. |
 | `onChange` | `function(option)` | `null` | Called when the user selects an option. |
 | `classes` | `object` | `{}` | Tailwind class strings that replace the default look of each part. See [Customizing the look](#customizing-the-look). |
@@ -75,7 +75,7 @@ SearchableSelect(container, config)
 
 - `value` — the string submitted with the form. Keep values unique across `options` and `fixedOptions`.
 - `label` — the text shown in the list and in the input.
-- `showTextInput` — optional. When `true`, selecting this option shows the element passed as `textInput`.
+- `showTextInput` — optional. When `true`, selecting this option shows the element(s) passed as `textInput`.
 
 ## Customizing the look
 
@@ -156,7 +156,7 @@ select.destroy();         // remove the component (see below)
 
 ### destroy()
 
-Removes the `document`-level listener the component added, empties the container and deletes `container.searchableSelect`. Call it before you remove or re-render the container (e.g. in a single-page app, or when closing a modal) so listeners do not pile up. After `destroy()`, the linked `textInput` is left hidden and enabled, and the instance should not be used again. Create a new one if needed.
+Removes the `document`-level listener the component added, empties the container and deletes `container.searchableSelect`. Call it before you remove or re-render the container (e.g. in a single-page app, or when closing a modal) so listeners do not pile up. After `destroy()`, the linked `textInput` element(s) are left hidden and their fields enabled, and the instance should not be used again. Create a new one if needed.
 
 ## Events
 
@@ -236,7 +236,45 @@ The text input is hidden (and disabled, so it is not submitted) until an option 
 
 You do not need to add the `hidden` attribute yourself. The component hides the text input on startup.
 
-### 4. Custom "no match" text
+### 4. Reveal a label, input and help text together
+
+`textInput` can be a wrapper element or an array of elements. Everything is shown and hidden at the same time, and form fields inside are disabled while hidden so they are not submitted. When revealed, the first field inside gets focus.
+
+Wrapper (recommended):
+
+```html
+<div id="country"></div>
+
+<div id="other-group" class="mt-2">
+  <label for="country-other" class="block font-semibold">Other country</label>
+  <input type="text" id="country-other" name="country_other"
+         class="w-full box-border px-2.5 py-2 border border-[#aaa] rounded-md">
+  <p class="text-sm text-gray-500">Enter the full country name.</p>
+</div>
+
+<script>
+  SearchableSelect(document.getElementById('country'), {
+    name: 'country',
+    options: countries,
+    fixedOptions: [{ value: 'other', label: 'Other…', showTextInput: true }],
+    textInput: document.getElementById('other-group')
+  });
+</script>
+```
+
+Or an array, when the elements are not next to each other:
+
+```js
+textInput: [
+  document.getElementById('other-label'),
+  document.getElementById('country-other'),
+  document.getElementById('other-help')
+]
+```
+
+Classes like `flex` or `grid` on the wrapper are fine. The component hides it with an inline `display: none`, which overrides them.
+
+### 5. Custom "no match" text
 
 ```js
 SearchableSelect(document.getElementById('country'), {
@@ -245,7 +283,7 @@ SearchableSelect(document.getElementById('country'), {
 });
 ```
 
-### 5. Preselected value
+### 6. Preselected value
 
 ```js
 SearchableSelect(document.getElementById('country'), {
@@ -258,7 +296,7 @@ SearchableSelect(document.getElementById('country'), {
 });
 ```
 
-### 6. React to changes
+### 7. React to changes
 
 ```js
 SearchableSelect(document.getElementById('country'), {
@@ -274,7 +312,7 @@ document.getElementById('country').addEventListener('change', function (e) {
 });
 ```
 
-### 7. Using it in a form
+### 8. Using it in a form
 
 ```html
 <form id="my-form">
@@ -302,7 +340,7 @@ document.getElementById('country').addEventListener('change', function (e) {
 </script>
 ```
 
-### 8. Multiple instances on one page
+### 9. Multiple instances on one page
 
 Call the function once per container. Each instance keeps its own state.
 
@@ -311,7 +349,7 @@ SearchableSelect(document.getElementById('country'), { name: 'country', options:
 SearchableSelect(document.getElementById('city'),    { name: 'city',    options: cities });
 ```
 
-### 9. Read or set the value from code
+### 10. Read or set the value from code
 
 ```js
 var select = SearchableSelect(document.getElementById('country'), { name: 'country', options: countries });
@@ -323,7 +361,7 @@ console.log(select.getValue()); // 'fr'
 document.getElementById('country').searchableSelect.setValue(null);
 ```
 
-### 10. Clean up when removing the select
+### 11. Clean up when removing the select
 
 ```js
 var select = SearchableSelect(document.getElementById('country'), { name: 'country', options: countries });
@@ -332,7 +370,7 @@ var select = SearchableSelect(document.getElementById('country'), { name: 'count
 select.destroy();
 ```
 
-### 11. Build options from an array of strings
+### 12. Build options from an array of strings
 
 ```js
 var options = ['Red', 'Green', 'Blue'].map(function (c) {
@@ -359,3 +397,4 @@ SearchableSelect(document.getElementById('color'), { name: 'color', options: opt
 - Tailwind classes are applied from JavaScript. If you use a built Tailwind setup rather than the CDN, make sure your content configuration includes the file containing the `SearchableSelect` function so the classes are not purged.
 - Each instance adds one `mousedown` listener on `document` (used to close the list on outside clicks). Call `destroy()` when you remove an instance from the page.
 - Options with `showTextInput: true` do nothing unless `textInput` is provided.
+- Inside a revealed wrapper, all `input`, `select`, `textarea` and `button` elements are enabled and disabled together with it.
