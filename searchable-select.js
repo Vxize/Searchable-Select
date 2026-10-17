@@ -7,7 +7,9 @@
  * config.name          name of the hidden input that holds the selected value (for forms)
  * config.placeholder   placeholder text
  * config.noMatchText   text shown when the search finds no options (default: 'No matches')
- * config.textInput     element to reveal when an option with showTextInput is selected
+ * config.textInput     element, or array of elements, to reveal when an option with showTextInput
+ *                      is selected (e.g. a wrapper holding a label, a text input and help text).
+ *                      Form fields inside are disabled while hidden so they are not submitted.
  * config.value         initially selected value
  * config.classes       object of Tailwind class strings that REPLACE the defaults for each part:
  *                      container, input, arrow, list, option, fixedOption, activeOption,
@@ -106,6 +108,29 @@ function SearchableSelect(container, config) {
     });
   }
 
+  // ---- Reveal targets (text input, or a wrapper with label + input + help text) ----
+  function revealTargets() { return [].concat(cfg.textInput || []).filter(Boolean); }
+  function fieldsIn(node) {
+    var sel = 'input,select,textarea,button';
+    return node.matches(sel) ? [node] : Array.prototype.slice.call(node.querySelectorAll(sel));
+  }
+  // show: visible or not. enabled: whether form fields inside take part in form submission.
+  function setRevealed(show, enabled) {
+    revealTargets().forEach(function (node) {
+      node.hidden = !show;
+      node.style.display = show ? '' : 'none'; // wins over classes like "flex" that would defeat [hidden]
+      fieldsIn(node).forEach(function (f) { f.disabled = !enabled; });
+    });
+  }
+  function focusRevealed() {
+    var first = null;
+    revealTargets().some(function (node) {
+      first = fieldsIn(node).filter(function (f) { return f.type !== 'hidden' && f.type !== 'button'; })[0];
+      return !!first;
+    });
+    if (first) first.focus();
+  }
+
   // ---- Open / close / select ----
   function open() {
     if (isOpen) return;
@@ -132,11 +157,8 @@ function SearchableSelect(container, config) {
     hidden.value = o ? o.value : '';
     input.value = o ? o.label : '';
     var show = !!(o && o.showTextInput);
-    if (cfg.textInput) {
-      cfg.textInput.hidden = !show;
-      cfg.textInput.disabled = !show; // a disabled field is not submitted with the form
-      if (show && !silent) cfg.textInput.focus();
-    }
+    setRevealed(show, show);
+    if (show && !silent) focusRevealed();
     close();
     if (!silent && cfg.onChange) cfg.onChange(o);
     container.dispatchEvent(new CustomEvent('change', { detail: o, bubbles: true }));
@@ -178,7 +200,7 @@ function SearchableSelect(container, config) {
   document.addEventListener('mousedown', onDocMouseDown);
 
   // ---- Init ----
-  if (cfg.textInput) { cfg.textInput.hidden = true; cfg.textInput.disabled = true; }
+  setRevealed(false, false);
   if (cfg.value != null) {
     var init = cfg.options.concat(cfg.fixedOptions).find(function (o) { return o.value === cfg.value; });
     if (init) select(init, true);
@@ -196,7 +218,7 @@ function SearchableSelect(container, config) {
       container.textContent = '';
       toggleClasses(container, cls.container, false);
       delete container.searchableSelect;
-      if (cfg.textInput) { cfg.textInput.hidden = true; cfg.textInput.disabled = false; }
+      setRevealed(false, false);
     }
   };
   container.searchableSelect = api;
